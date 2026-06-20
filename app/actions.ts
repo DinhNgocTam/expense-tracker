@@ -18,17 +18,17 @@ export async function addExpense(formData: FormData) {
     revalidatePath('/'); // Refresh the page with updated data
 }
 
-export async function getMonthlyExpenses() {
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+export async function getExpenses(startDate?: string, endDate?: string) {
+    let query = supabase.from('expenses').select('*').order('date', { ascending: false });
 
-    const { data, error } = await supabase
-        .from('expenses')
-        .select('*')
-        .gte('date', startOfMonth)
-        .lte('date', endOfMonth)
-        .order('date', { ascending: false });
+    if (startDate) {
+        query = query.gte('date', startDate);
+    }
+    if (endDate) {
+        query = query.lte('date', endDate);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
         console.error('Error fetching expenses:', error.message);

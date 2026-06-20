@@ -1,10 +1,25 @@
 "use client";
 
+export interface Expense {
+  id: string;
+  amount: number;
+  description: string;
+  date: string;
+}
+
+export interface ExpenseFormProps {
+  action?: (formData: FormData) => void;
+  initialValues?: Expense;
+  onCancel?: () => void;
+}
+
 export default function ExpenseForm({
   action,
-}: {
-  action?: (formData: FormData) => void;
-}) {
+  initialValues,
+  onCancel,
+}: ExpenseFormProps) {
+  const isEdit = !!initialValues;
+
   return (
     <form
       action={action}
@@ -20,6 +35,7 @@ export default function ExpenseForm({
           id="description"
           name="description"
           required
+          defaultValue={initialValues?.description}
           className="w-full border rounded-md p-2"
           placeholder="vd: Mua thức ăn"
         />
@@ -35,6 +51,7 @@ export default function ExpenseForm({
             name="amount"
             step="0.01"
             required
+            defaultValue={initialValues?.amount}
             className="w-full border rounded-md p-2"
             placeholder="0"
           />
@@ -47,17 +64,29 @@ export default function ExpenseForm({
             type="date"
             id="date"
             name="date"
-            defaultValue={new Date().toISOString().split("T")[0]}
+            defaultValue={initialValues?.date || new Date().toISOString().split("T")[0]}
             className="w-full border rounded-md p-2"
+            suppressHydrationWarning
           />
         </div>
       </div>
-      <button
-        type="submit"
-        className="mt-2 bg-blue-600 text-white font-semibold py-2 rounded-md hover:bg-blue-700 transition"
-      >
-        Thêm khoản chi
-      </button>
+      <div className="flex gap-2 mt-2">
+        <button
+          type="submit"
+          className="bg-blue-600 text-white font-semibold py-2 rounded-md hover:bg-blue-700 transition flex-1"
+        >
+          {isEdit ? "Cập nhật" : "Thêm khoản chi"}
+        </button>
+        {isEdit && onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-md hover:bg-gray-400 transition"
+          >
+            Hủy
+          </button>
+        )}
+      </div>
     </form>
   );
 }

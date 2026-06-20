@@ -37,3 +37,33 @@ export async function getMonthlyExpenses() {
 
     return data || [];
 }
+
+export async function deleteExpense(id: string) {
+    const { error } = await supabase
+        .from('expenses')
+        .delete()
+        .eq('id', id);
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    revalidatePath('/');
+}
+
+export async function updateExpense(id: string, formData: FormData) {
+    const amount = parseFloat(formData.get('amount') as string);
+    const description = formData.get('description') as string;
+    const dateStr = formData.get('date') as string;
+
+    const { error } = await supabase
+        .from('expenses')
+        .update({ amount, description, date: dateStr })
+        .eq('id', id);
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    revalidatePath('/');
+}

@@ -38,7 +38,7 @@ jobs:
       # - It installs exact versions from package-lock.json
       # - It's faster and more reliable in automated environments
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       # Step 4: Run code linting
       # Checks code quality and style according to ESLint rules defined in the project

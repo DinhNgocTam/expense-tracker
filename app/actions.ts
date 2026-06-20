@@ -15,7 +15,7 @@ export async function addExpense(formData: FormData) {
         throw new Error(error.message);
     }
 
-    revadatePath('/'); // Refresh the page with updated data
+    revalidatePath('/'); // Refresh the page with updated data
 }
 
 export async function getMonthlyExpenses() {

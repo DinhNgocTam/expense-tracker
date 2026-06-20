@@ -45,7 +45,12 @@ jobs:
       - name: Run linting
         run: npm run lint
 
-      # Step 5: Run unit tests
+      # Step 5: Run TypeScript type checking
+      # Checks TypeScript types without emitting files
+      - name: Run TypeScript Type Check
+        run: npx tsc --noEmit
+
+      # Step 6: Run unit tests
       # Executes the test suite using Vitest (as configured in the project)
       - name: Run tests
         run: npm run test

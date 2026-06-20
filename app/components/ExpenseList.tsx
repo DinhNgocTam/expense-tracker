@@ -7,9 +7,10 @@ import ExpenseForm, { Expense } from "./ExpenseForm";
 interface ExpenseListProps {
   expenses: Expense[];
   addExpenseAction: (formData: FormData) => void;
+  emptyMessage?: string;
 }
 
-export default function ExpenseList({ expenses, addExpenseAction }: ExpenseListProps) {
+export default function ExpenseList({ expenses, addExpenseAction, emptyMessage = "Chưa có khoản chi nào." }: ExpenseListProps) {
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
   const handleDelete = async (id: string) => {
@@ -51,7 +52,7 @@ export default function ExpenseList({ expenses, addExpenseAction }: ExpenseListP
         <ul className="space-y-3">
           {expenses.length === 0 ? (
             <p className="text-gray-500 text-center py-4">
-              Chưa có khoản chi nào trong tháng này.
+              {emptyMessage}
             </p>
           ) : (
             expenses.map((expense) => (

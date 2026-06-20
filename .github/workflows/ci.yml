@@ -1,0 +1,52 @@
+name: CI Pipeline
+
+on:
+  # Trigger the workflow on push and pull request events to the main branch
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Set permissions for the workflow
+permissions:
+  contents: read
+
+jobs:
+  # Job to run linting and tests
+  build-and-test:
+    # Use ubuntu-latest as the environment
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      # This clones your repository so the workflow can access your code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Node.js environment
+      # Uses Node.js version 20 and enables npm caching to speed up dependency installation
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          # Enable npm caching to avoid downloading packages on every run
+          cache: "npm"
+
+      # Step 3: Install dependencies
+      # npm ci is used instead of npm install for CI environments because:
+      # - It does a clean install (removes node_modules first)
+      # - It installs exact versions from package-lock.json
+      # - It's faster and more reliable in automated environments
+      - name: Install dependencies
+        run: npm ci
+
+      # Step 4: Run code linting
+      # Checks code quality and style according to ESLint rules defined in the project
+      - name: Run linting
+        run: npm run lint
+
+      # Step 5: Run unit tests
+      # Executes the test suite using Vitest (as configured in the project)
+      - name: Run tests
+        run: npm run test
+"

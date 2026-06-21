@@ -1,6 +1,18 @@
 "use client";
 
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
+
 export default function Header() {
+  const router = useRouter();
+  const supabase = createClient();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  };
+
   return (
     <header className="sticky top-0 bg-background/80 backdrop-blur-md z-40">
       <div className="flex justify-between items-center w-full px-[2.5rem] py-[1rem] max-w-[1280px] mx-auto">
@@ -8,20 +20,15 @@ export default function Header() {
           Quản lý Chi tiêu Hàng ngày
         </h1>
         <div className="flex items-center gap-4">
-          <button className="p-2 rounded-full hover:bg-surface-container-low transition-colors cursor-pointer active:scale-95 duration-200">
-            <span className="material-symbols-outlined text-primary">
-              notifications
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant hover:bg-error-container hover:border-error transition-all cursor-pointer active:scale-95"
+          >
+            <span className="text-[14px] leading-[20px] tracking-[0.01em] font-semibold text-secondary hover:text-error">
+              Đăng xuất
             </span>
-          </button>
-          <button className="flex items-center gap-2 p-1 pl-3 rounded-full border border-outline-variant hover:bg-surface-container-low transition-all cursor-pointer active:scale-95">
-            <span className="text-[14px] leading-[20px] tracking-[0.01em] font-semibold">
-              Admin
-            </span>
-            <span
-              className="material-symbols-outlined text-primary"
-              style={{ fontVariationSettings: '"FILL" 1' }}
-            >
-              account_circle
+            <span className="material-symbols-outlined text-secondary hover:text-error">
+              logout
             </span>
           </button>
         </div>

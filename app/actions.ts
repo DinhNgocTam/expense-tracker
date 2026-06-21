@@ -1,9 +1,16 @@
 'use server'
 
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
 export async function addExpense(formData: FormData) {
+    const supabase = await createClient();
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        throw new Error('Not authenticated');
+    }
+
     const amount = parseFloat(formData.get('amount') as string);
     const description = formData.get('description') as string;
     const dateStr = formData.get('date') as string;
@@ -15,10 +22,17 @@ export async function addExpense(formData: FormData) {
         throw new Error(error.message);
     }
 
-    revalidatePath('/'); // Refresh the page with updated data
+    revalidatePath('/');
 }
 
 export async function getExpenses(startDate?: string, endDate?: string) {
+    const supabase = await createClient();
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        return [];
+    }
+
     let query = supabase.from('expenses').select('*').order('date', { ascending: false });
 
     if (startDate) {
@@ -39,6 +53,8 @@ export async function getExpenses(startDate?: string, endDate?: string) {
 }
 
 export async function deleteExpense(id: string) {
+    const supabase = await createClient();
+
     const { error } = await supabase
         .from('expenses')
         .delete()
@@ -52,6 +68,8 @@ export async function deleteExpense(id: string) {
 }
 
 export async function updateExpense(id: string, formData: FormData) {
+    const supabase = await createClient();
+
     const amount = parseFloat(formData.get('amount') as string);
     const description = formData.get('description') as string;
     const dateStr = formData.get('date') as string;

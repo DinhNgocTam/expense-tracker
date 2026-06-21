@@ -26,23 +26,28 @@ export default function ExpenseFilter({ currentFilter }: ExpenseFilterProps) {
   };
 
   return (
-    <div className="flex items-center gap-4 mb-6">
-      <label htmlFor="filter" className="text-sm font-medium text-gray-700">
+    <div className="flex flex-col gap-4">
+      <label className="text-[14px] leading-[20px] tracking-[0.01em] font-semibold text-secondary">
         Lọc theo:
       </label>
-      <select
-        id="filter"
-        value={currentFilter}
-        onChange={(e) => handleFilterChange(e.target.value as DateFilter)}
-        className="border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        data-testid="filter-select"
-      >
+      <div className="inline-flex p-1 bg-surface-container-high rounded-full w-fit">
         {FILTER_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => handleFilterChange(option.value)}
+            className={`px-6 py-2 rounded-full text-[14px] leading-[20px] tracking-[0.01em] font-bold transition-all ${
+              currentFilter === option.value
+                ? "bg-primary text-on-primary shadow-md"
+                : "text-secondary hover:text-primary"
+            }`}
+            data-testid="filter-button"
+            data-filter={option.value}
+          >
             {option.label}
-          </option>
+          </button>
         ))}
-      </select>
+      </div>
     </div>
   );
 }

@@ -10,7 +10,11 @@ interface ExpenseListProps {
   emptyMessage?: string;
 }
 
-export default function ExpenseList({ expenses, addExpenseAction, emptyMessage = "Chưa có khoản chi nào." }: ExpenseListProps) {
+export default function ExpenseList({
+  expenses,
+  addExpenseAction,
+  emptyMessage = "Chưa có khoản chi nào.",
+}: ExpenseListProps) {
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
   const handleDelete = async (id: string) => {
@@ -33,8 +37,13 @@ export default function ExpenseList({ expenses, addExpenseAction, emptyMessage =
   return (
     <>
       {editingExpense ? (
-        <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4">Cập nhật khoản chi</h2>
+        <section className="lg:col-span-5 bg-white p-8 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-slate-100">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-2 h-8 bg-primary rounded-full"></div>
+            <h2 className="text-[24px] leading-[32px] font-semibold text-on-background">
+              Cập nhật khoản chi
+            </h2>
+          </div>
           <ExpenseForm
             action={handleUpdate}
             initialValues={editingExpense}
@@ -42,54 +51,90 @@ export default function ExpenseList({ expenses, addExpenseAction, emptyMessage =
           />
         </section>
       ) : (
-        <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-          <h2 className="text-xl font-semibold mb-4">Thêm khoản chi</h2>
+        <section className="lg:col-span-5 bg-white p-8 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-slate-100">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-2 h-8 bg-primary rounded-full"></div>
+            <h2 className="text-[24px] leading-[32px] font-semibold text-on-background">
+              Thêm khoản chi mới
+            </h2>
+          </div>
           <ExpenseForm action={addExpenseAction} />
         </section>
       )}
 
-      <section className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-        <ul className="space-y-3">
-          {expenses.length === 0 ? (
-            <p className="text-gray-500 text-center py-4">
+      <section className="lg:col-span-7 space-y-4">
+        <div className="flex items-center justify-between mb-4 px-2">
+          <h2 className="text-[24px] leading-[32px] font-semibold text-on-background">
+            Giao dịch gần đây
+          </h2>
+          <span className="text-[14px] leading-[20px] tracking-[0.01em] font-semibold text-secondary">
+            {expenses.length} giao dịch tìm thấy
+          </span>
+        </div>
+
+        {expenses.length === 0 ? (
+          <div className="py-12 flex flex-col items-center justify-center opacity-40 border-2 border-dashed border-outline-variant rounded-2xl">
+            <span className="material-symbols-outlined text-4xl mb-2">
+              post_add
+            </span>
+            <p className="text-[14px] leading-[20px] tracking-[0.01em] font-semibold">
               {emptyMessage}
             </p>
-          ) : (
-            expenses.map((expense) => (
-              <li
-                key={expense.id}
-                className="flex justify-between items-center border-b border-gray-100 pb-2"
-                data-testid="expense-item"
-              >
-                <div>
-                  <p className="font-medium">{expense.description}</p>
-                  <p className="text-sm text-gray-500">{expense.date}</p>
+          </div>
+        ) : (
+          expenses.map((expense) => (
+            <div
+              key={expense.id}
+              className="bg-white p-5 rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.02)] border border-slate-100 flex items-center justify-between group hover:border-primary/20 hover:shadow-md transition-all"
+              data-testid="expense-item"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-surface-container-low flex items-center justify-center group-hover:bg-primary/5 transition-colors">
+                  <span className="material-symbols-outlined text-secondary group-hover:text-primary">
+                    shopping_bag
+                  </span>
                 </div>
-                <div className="flex items-center gap-4">
-                  <p className="font-bold text-gray-700">
-                    {Number(expense.amount).toLocaleString("vi-VN")} ₫
+                <div>
+                  <h4 className="text-[18px] leading-[28px] font-semibold text-on-background">
+                    {expense.description}
+                  </h4>
+                  <p className="text-[12px] leading-[16px] text-outline">
+                    {expense.date}
                   </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-8">
+                <span className="text-[18px] leading-[28px] font-bold text-primary">
+                  {Number(expense.amount).toLocaleString("vi-VN")} đ
+                </span>
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setEditingExpense(expense)}
-                    className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                    className="p-2 text-secondary hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
+                    title="Sửa"
                     data-testid="edit-button"
                   >
-                    Sửa
+                    <span className="material-symbols-outlined text-xl">
+                      edit
+                    </span>
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDelete(expense.id)}
-                    className="text-red-600 hover:text-red-800 font-medium text-sm"
+                    className="p-2 text-outline hover:text-error hover:bg-error-container/30 rounded-lg transition-all"
+                    title="Xóa"
                     data-testid="delete-button"
                   >
-                    Xóa
+                    <span className="material-symbols-outlined text-xl">
+                      delete
+                    </span>
                   </button>
                 </div>
-              </li>
-            ))
-          )}
-        </ul>
+              </div>
+            </div>
+          ))
+        )}
       </section>
     </>
   );

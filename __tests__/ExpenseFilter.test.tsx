@@ -21,32 +21,35 @@ describe("ExpenseFilter", () => {
     );
   });
 
-  it("renders the filter select with all options", () => {
+  it("renders all filter buttons", () => {
     render(<ExpenseFilter currentFilter="this_month" />);
 
-    const select = screen.getByTestId("filter-select");
-    expect(select).toBeDefined();
-
-    const options = screen.getAllByRole("option");
-    expect(options).toHaveLength(4);
-    expect(options[0].textContent).toBe("Tháng này");
-    expect(options[1].textContent).toBe("Tháng trước");
-    expect(options[2].textContent).toBe("Năm nay");
-    expect(options[3].textContent).toBe("Tất cả");
+    const buttons = screen.getAllByTestId("filter-button");
+    expect(buttons).toHaveLength(4);
+    expect(buttons[0].textContent).toBe("Tháng này");
+    expect(buttons[1].textContent).toBe("Tháng trước");
+    expect(buttons[2].textContent).toBe("Năm nay");
+    expect(buttons[3].textContent).toBe("Tất cả");
   });
 
-  it("renders with the correct current filter selected", () => {
+  it("renders with the correct active filter styled as primary", () => {
     render(<ExpenseFilter currentFilter="last_month" />);
 
-    const select = screen.getByTestId("filter-select") as HTMLSelectElement;
-    expect(select.value).toBe("last_month");
+    const buttons = screen.getAllByTestId("filter-button");
+    const lastMonthButton = buttons.find(
+      (btn) => btn.getAttribute("data-filter") === "last_month"
+    );
+    expect(lastMonthButton).toBeDefined();
   });
 
-  it("calls router.push with correct URL when filter is changed", () => {
+  it("calls router.push with correct URL when filter button is clicked", () => {
     render(<ExpenseFilter currentFilter="this_month" />);
 
-    const select = screen.getByTestId("filter-select");
-    fireEvent.change(select, { target: { value: "this_year" } });
+    const buttons = screen.getAllByTestId("filter-button");
+    const thisYearButton = buttons.find(
+      (btn) => btn.getAttribute("data-filter") === "this_year"
+    );
+    fireEvent.click(thisYearButton!);
 
     expect(mockPush).toHaveBeenCalledWith("/?filter=this_year");
   });
@@ -58,8 +61,11 @@ describe("ExpenseFilter", () => {
 
     render(<ExpenseFilter currentFilter="this_month" />);
 
-    const select = screen.getByTestId("filter-select");
-    fireEvent.change(select, { target: { value: "all" } });
+    const buttons = screen.getAllByTestId("filter-button");
+    const allButton = buttons.find(
+      (btn) => btn.getAttribute("data-filter") === "all"
+    );
+    fireEvent.click(allButton!);
 
     expect(mockPush).toHaveBeenCalledWith("/?other=value&filter=all");
   });

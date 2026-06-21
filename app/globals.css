@@ -1,26 +1,91 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-on-tertiary: #ffffff;
+  --color-surface-container: #eceef0;
+  --color-on-primary: #ffffff;
+  --color-error: #ba1a1a;
+  --color-outline-variant: #c7c5d4;
+  --color-surface-tint: #4f54b4;
+  --color-on-primary-fixed: #04006d;
+  --color-error-container: #ffdad6;
+  --color-background: #f7f9fb;
+  --color-secondary: #505f76;
+  --color-tertiary-container: #004830;
+  --color-on-tertiary-fixed: #002113;
+  --color-primary: #15157d;
+  --color-on-background: #191c1e;
+  --color-secondary-fixed-dim: #b7c8e1;
+  --color-surface-variant: #e0e3e5;
+  --color-surface-dim: #d8dadc;
+  --color-on-error-container: #93000a;
+  --color-inverse-primary: #c0c1ff;
+  --color-on-secondary-fixed-variant: #38485d;
+  --color-surface-container-highest: #e0e3e5;
+  --color-inverse-on-surface: #eff1f3;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #d0e1fb;
+  --color-on-secondary-container: #54647a;
+  --color-on-surface: #191c1e;
+  --color-on-primary-container: #9da1ff;
+  --color-surface-container-lowest: #ffffff;
+  --color-on-tertiary-container: #22c087;
+  --color-inverse-surface: #2d3133;
+  --color-primary-fixed: #e1e0ff;
+  --color-on-primary-fixed-variant: #373a9b;
+  --color-surface-container-high: #e6e8ea;
+  --color-outline: #777683;
+  --color-primary-fixed-dim: #c0c1ff;
+  --color-surface-container-low: #f2f4f6;
+  --color-surface: #f7f9fb;
+  --color-surface-bright: #f7f9fb;
+  --color-tertiary: #002f1e;
+  --color-secondary-fixed: #d3e4fe;
+  --color-on-surface-variant: #464652;
+  --color-on-secondary-fixed: #0b1c30;
+  --color-tertiary-fixed: #6ffbbe;
+  --color-on-error: #ffffff;
+  --color-tertiary-fixed-dim: #4edea3;
+  --color-primary-container: #2e3192;
+  --color-on-tertiary-fixed-variant: #005236;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-family-headline: "Be Vietnam Pro", sans-serif;
+  --font-family-body-md: "Be Vietnam Pro", sans-serif;
+  --font-family-headline-md: "Be Vietnam Pro", sans-serif;
+  --font-family-label-sm: "Be Vietnam Pro", sans-serif;
+  --font-family-body-lg: "Be Vietnam Pro", sans-serif;
+  --font-family-label-md: "Be Vietnam Pro", sans-serif;
+  --font-family-display: "Be Vietnam Pro", sans-serif;
+
+  --spacing-margin-desktop: 2.5rem;
+  --spacing-gutter: 1.5rem;
+  --spacing-margin-mobile: 1rem;
+  --spacing-stack-md: 1rem;
+  --spacing-container-max: 1280px;
+  --spacing-stack-lg: 2rem;
+  --spacing-stack-sm: 0.5rem;
+
+  --radius-default: 0.25rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-full: 9999px;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-be-vietnam-pro), "Be Vietnam Pro", sans-serif;
+  background-color: #f7f9fb;
+}
+
+.material-symbols-outlined {
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 400,
+    "GRAD" 0,
+    "opsz" 24;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
 }

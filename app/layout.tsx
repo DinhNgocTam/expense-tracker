@@ -1,19 +1,15 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Be_Vietnam_Pro } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const beVietnamPro = Be_Vietnam_Pro({
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-be-vietnam-pro",
 });
 
 export const metadata: Metadata = {
-  title: "Quản lý Chi tiêu",
+  title: "Quản lý Chi tiêu - Fintech Premium",
   description: "Ứng dụng theo dõi chi tiêu hàng ngày",
 };
 
@@ -23,13 +19,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="vi"
-      suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      {/* Đã thêm suppressHydrationWarning vào thẻ body dưới đây */}
-      <body className="min-h-full flex flex-col" suppressHydrationWarning>
+    <html lang="vi" suppressHydrationWarning>
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body
+        className={`min-h-full flex flex-col text-on-background ${beVietnamPro.variable}`}
+        suppressHydrationWarning
+      >
         {children}
       </body>
     </html>

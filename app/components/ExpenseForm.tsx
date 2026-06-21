@@ -21,59 +21,70 @@ export default function ExpenseForm({
   const isEdit = !!initialValues;
 
   return (
-    <form
-      action={action}
-      className="flex flex-col gap-4"
-      data-testid="expense-form"
-    >
-      <div>
-        <label htmlFor="description" className="block text-sm font-medium mb-1">
+    <form action={action} className="space-y-6">
+      <div className="space-y-2">
+        <label htmlFor="description" className="text-[14px] leading-[20px] tracking-[0.01em] font-semibold text-secondary ml-1">
           Mô tả
         </label>
-        <input
-          type="text"
-          id="description"
-          name="description"
-          required
-          defaultValue={initialValues?.description}
-          className="w-full border rounded-md p-2"
-          placeholder="vd: Mua thức ăn"
-        />
+        <div className="relative">
+          <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline">
+            edit
+          </span>
+          <input
+            type="text"
+            id="description"
+            name="description"
+            required
+            defaultValue={initialValues?.description}
+            className="w-full pl-12 pr-4 py-3 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none bg-surface-bright"
+            placeholder="vd: Mua thức ăn"
+          />
+        </div>
       </div>
-      <div className="flex gap-4">
-        <div className="flex-1">
-          <label htmlFor="amount" className="block text-sm font-medium mb-1">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <label htmlFor="amount" className="text-[14px] leading-[20px] tracking-[0.01em] font-semibold text-secondary ml-1">
             Số tiền (VNĐ)
           </label>
-          <input
-            type="number"
-            id="amount"
-            name="amount"
-            step="0.01"
-            required
-            defaultValue={initialValues?.amount}
-            className="w-full border rounded-md p-2"
-            placeholder="0"
-          />
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline">
+              payments
+            </span>
+            <input
+              type="number"
+              id="amount"
+              name="amount"
+              step="0.01"
+              required
+              defaultValue={initialValues?.amount}
+              className="w-full pl-12 pr-4 py-3 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none bg-surface-bright text-right"
+              placeholder="0"
+            />
+          </div>
         </div>
-        <div className="flex-1">
-          <label htmlFor="date" className="block text-sm font-medium mb-1">
+        <div className="space-y-2">
+          <label htmlFor="date" className="text-[14px] leading-[20px] tracking-[0.01em] font-semibold text-secondary ml-1">
             Ngày
           </label>
-          <input
-            type="date"
-            id="date"
-            name="date"
-            defaultValue={initialValues?.date || new Date().toISOString().split("T")[0]}
-            className="w-full border rounded-md p-2"
-            suppressHydrationWarning
-          />
+          <div className="relative">
+            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline">
+              calendar_month
+            </span>
+            <input
+              type="date"
+              id="date"
+              name="date"
+              defaultValue={initialValues?.date || new Date().toISOString().split("T")[0]}
+              className="w-full pl-12 pr-4 py-3 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none bg-surface-bright"
+              suppressHydrationWarning
+            />
+          </div>
         </div>
       </div>
-      <div className="flex gap-2 mt-2">
+      <div className="flex gap-2 mt-4">
         <button
           type="submit"
-          className="bg-blue-600 text-white font-semibold py-2 rounded-md hover:bg-blue-700 transition flex-1"
+          className="flex-1 bg-gradient-to-r from-primary to-primary-container text-on-primary py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:translate-y-[-1px] active:scale-95 transition-all duration-200"
         >
           {isEdit ? "Cập nhật" : "Thêm khoản chi"}
         </button>
@@ -81,7 +92,7 @@ export default function ExpenseForm({
           <button
             type="button"
             onClick={onCancel}
-            className="bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-md hover:bg-gray-400 transition"
+            className="bg-gray-300 text-gray-700 font-semibold py-4 px-6 rounded-xl hover:bg-gray-400 transition"
           >
             Hủy
           </button>

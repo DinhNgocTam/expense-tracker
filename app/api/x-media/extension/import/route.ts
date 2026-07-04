@@ -37,10 +37,16 @@ interface ImportResult {
   reason?: string;
 }
 
+interface TokenVerificationResult {
+  valid: boolean;
+  userId?: string;
+  errorCode?: string;
+}
+
 async function verifyExtensionToken(
   supabase: Awaited<ReturnType<typeof createClient>>,
   token: string
-): Promise<string | null> {
+): Promise<TokenVerificationResult> {
   const tokenHash = hashToken(token);
 
   const { data, error } = await supabase
@@ -50,19 +56,19 @@ async function verifyExtensionToken(
     .single();
 
   if (error || !data) {
-    return null;
+    return { valid: false, errorCode: "EXTENSION_TOKEN_NOT_FOUND" };
   }
 
   if (data.revoked_at) {
-    return null;
+    return { valid: false, errorCode: "EXTENSION_TOKEN_REVOKED" };
   }
 
   const expiresAt = new Date(data.expires_at);
   if (expiresAt < new Date()) {
-    return null;
+    return { valid: false, errorCode: "EXTENSION_TOKEN_EXPIRED" };
   }
 
-  return data.user_id;
+  return { valid: true, userId: data.user_id };
 }
 
 export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
@@ -80,8 +86,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
         {
           success: false,
           error: {
-            code: "UNAUTHORIZED",
-            message: "Missing or invalid authorization header.",
+            code: "EXTENSION_TOKEN_MISSING",
+            message: "Missing authorization header.",
           },
         },
         { status: 401, headers: getCorsHeaders(request) }
@@ -94,8 +100,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
         {
           success: false,
           error: {
-            code: "UNAUTHORIZED",
-            message: "Invalid extension token.",
+            code: "EXTENSION_TOKEN_INVALID",
+            message: "Invalid extension token format.",
           },
         },
         { status: 401, headers: getCorsHeaders(request) }
@@ -103,20 +109,28 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
     }
 
     const supabase = await createClient();
-    const userId = await verifyExtensionToken(supabase, token);
+    const tokenResult = await verifyExtensionToken(supabase, token);
 
-    if (!userId) {
+    if (!tokenResult.valid) {
+      const errorMessages: Record<string, string> = {
+        EXTENSION_TOKEN_NOT_FOUND: "Extension token not found. Please reconnect the extension.",
+        EXTENSION_TOKEN_REVOKED: "Extension token has been revoked. Please reconnect the extension.",
+        EXTENSION_TOKEN_EXPIRED: "Extension token has expired. Please reconnect the extension.",
+      };
+
       return NextResponse.json(
         {
           success: false,
           error: {
-            code: "UNAUTHORIZED",
-            message: "Invalid or expired extension token. Please reconnect the extension.",
+            code: tokenResult.errorCode || "EXTENSION_TOKEN_INVALID",
+            message: errorMessages[tokenResult.errorCode || ""] || "Invalid or expired extension token. Please reconnect the extension.",
           },
         },
         { status: 401, headers: getCorsHeaders(request) }
       );
     }
+
+    const userId = tokenResult.userId as string;
 
     const body = await request.json();
     const validation = validateExtensionImportRequest(body);

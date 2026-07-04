@@ -4,19 +4,21 @@
  */
 
 (function() {
-  if (!globalThis.X_MEDIA_CONFIG?.APP_BASE_URL) {
+  const config = globalThis.config;
+
+  if (!config?.APP_BASE_URL) {
     throw new Error("X Media Collector: APP_BASE_URL is not configured in config.js");
   }
 
-  const APP_BASE_URL = X_MEDIA_CONFIG.APP_BASE_URL;
+  const APP_BASE_URL = config.APP_BASE_URL;
 
-  const connectApiUrl = new URL(X_MEDIA_CONFIG.API_CONNECT, APP_BASE_URL).toString();
-  const sessionApiUrl = new URL(X_MEDIA_CONFIG.API_SESSION, APP_BASE_URL).toString();
-  const importApiUrl = new URL(X_MEDIA_CONFIG.API_IMPORT, APP_BASE_URL).toString();
-  const connectPageUrl = new URL("/x-media/extension-connect", APP_BASE_URL).toString();
-  const galleryUrl = new URL("/x-media", APP_BASE_URL).toString();
+  const connectApiUrl = new URL(config.API_CONNECT, APP_BASE_URL).toString();
+  const sessionApiUrl = new URL(config.API_SESSION, APP_BASE_URL).toString();
+  const importApiUrl = new URL(config.API_IMPORT, APP_BASE_URL).toString();
+  const connectPageUrl = new URL(config.CONNECT_PAGE, APP_BASE_URL).toString();
+  const galleryUrl = new URL(config.GALLERY_PAGE, APP_BASE_URL).toString();
 
-  console.debug("[X Media Collector] App base URL:", APP_BASE_URL);
+  console.debug("[X Media Collector] APP_BASE_URL:", APP_BASE_URL);
   console.debug("[X Media Collector] Connect endpoint:", connectApiUrl);
   console.debug("[X Media Collector] Session endpoint:", sessionApiUrl);
   console.debug("[X Media Collector] Import endpoint:", importApiUrl);
@@ -276,8 +278,8 @@
 
   async function getStoredToken() {
     try {
-      const result = await chrome.storage.local.get(X_MEDIA_CONFIG.STORAGE_KEYS.EXTENSION_TOKEN);
-      return result[X_MEDIA_CONFIG.STORAGE_KEYS.EXTENSION_TOKEN] || null;
+      const result = await chrome.storage.local.get(config.STORAGE_KEYS.EXTENSION_TOKEN);
+      return result[config.STORAGE_KEYS.EXTENSION_TOKEN] || null;
     } catch (e) {
       return null;
     }
@@ -285,9 +287,9 @@
 
   async function loadSavedResult() {
     try {
-      const result = await chrome.storage.local.get(X_MEDIA_CONFIG.STORAGE_KEYS.LAST_RESULT);
-      if (result && result[X_MEDIA_CONFIG.STORAGE_KEYS.LAST_RESULT]) {
-        const data = result[X_MEDIA_CONFIG.STORAGE_KEYS.LAST_RESULT];
+      const result = await chrome.storage.local.get(config.STORAGE_KEYS.LAST_RESULT);
+      if (result && result[config.STORAGE_KEYS.LAST_RESULT]) {
+        const data = result[config.STORAGE_KEYS.LAST_RESULT];
         if (data && data.success && data.media && data.media.length > 0) {
           showResults(data);
           staleWarning.hidden = false;
@@ -302,7 +304,7 @@
 
   async function clearResults() {
     try {
-      await chrome.storage.local.remove(X_MEDIA_CONFIG.STORAGE_KEYS.LAST_RESULT);
+      await chrome.storage.local.remove(config.STORAGE_KEYS.LAST_RESULT);
     } catch (e) {
     }
     resultsEl.hidden = true;
@@ -382,7 +384,7 @@
         archiveSection.hidden = true;
       } else {
         await chrome.storage.local.set({
-          [X_MEDIA_CONFIG.STORAGE_KEYS.LAST_RESULT]: response
+          [config.STORAGE_KEYS.LAST_RESULT]: response
         });
         showResults(response);
         setStatus('Đã tìm thấy ' + response.count + ' ảnh', 'success');
@@ -535,7 +537,7 @@
 
       extensionToken = data.data.token;
       await chrome.storage.local.set({
-        [X_MEDIA_CONFIG.STORAGE_KEYS.EXTENSION_TOKEN]: extensionToken
+        [config.STORAGE_KEYS.EXTENSION_TOKEN]: extensionToken
       });
 
       const sessionResponse = await fetch(sessionApiUrl, {
@@ -546,7 +548,7 @@
         if (sessionData.authenticated && sessionData.user) {
           authEmail = sessionData.user.email;
           await chrome.storage.local.set({
-            [X_MEDIA_CONFIG.STORAGE_KEYS.AUTH_EMAIL]: authEmail
+            [config.STORAGE_KEYS.AUTH_EMAIL]: authEmail
           });
         }
       }

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>X Media Collector</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1 class="title">X Media Collector</h1>
+      <p class="description">Thu thập các ảnh đang hiển thị trên tab X hiện tại.</p>
+    </header>
+
+    <main class="main">
+      <div id="authSection" class="auth-section">
+        <div id="authStatus" class="auth-status disconnected">
+          <span id="authStatusText">Chưa kết nối</span>
+          <button id="connectBtn" type="button" class="btn btn-small">Kết nối</button>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="collectBtn" type="button" class="btn btn-primary" disabled>
+          Thu thập ảnh
+        </button>
+        <button id="clearBtn" type="button" class="btn btn-secondary" disabled>
+          Xóa kết quả
+        </button>
+      </div>
+
+      <div id="status" class="status" role="status" aria-live="polite">
+        <span id="statusText"></span>
+      </div>
+
+      <div id="staleWarning" class="stale-warning" hidden>
+        <span>Dữ liệu có thể đã cũ. Thu thập lại để cập nhật.</span>
+      </div>
+
+      <div id="connectModal" class="modal" hidden>
+        <div class="modal-content">
+          <h3 class="modal-title">Kết nối với ứng dụng</h3>
+          <p class="modal-description">Mở trang kết nối để lấy mã:</p>
+          <a id="openConnectPage" href="" target="_blank" rel="noreferrer noopener" class="btn btn-primary btn-block">
+            Mở trang kết nối
+          </a>
+          <div class="modal-input-group">
+            <label for="connectCode">Dán mã kết nối:</label>
+            <input type="text" id="connectCode" class="modal-input" placeholder="XXXXXXXXXXXX" maxlength="12">
+          </div>
+          <div class="modal-actions">
+            <button id="cancelConnect" type="button" class="btn btn-secondary">Hủy</button>
+            <button id="submitConnect" type="button" class="btn btn-primary" disabled>Xác nhận</button>
+          </div>
+          <div id="connectError" class="modal-error" hidden></div>
+        </div>
+      </div>
+
+      <div id="results" class="results" hidden>
+        <div class="results-header">
+          <div class="results-controls">
+            <label class="checkbox-label">
+              <input type="checkbox" id="selectAll">
+              <span>Chọn tất cả</span>
+            </label>
+            <span id="selectedCount" class="selected-count"></span>
+          </div>
+          <div>
+            <span id="resultsSummary" class="results-summary"></span>
+            <span id="pageUrl" class="page-url"></span>
+          </div>
+        </div>
+        <div id="resultsList" class="results-list"></div>
+      </div>
+
+      <div id="emptyState" class="empty-state" hidden>
+        <p>Chưa có kết quả. Truy cập X và nhấn "Thu thập ảnh".</p>
+      </div>
+
+      <div id="errorState" class="error-state" hidden>
+        <p id="errorText"></p>
+      </div>
+
+      <div id="archiveSection" class="archive-section" hidden>
+        <button id="archiveBtn" type="button" class="btn btn-archive" disabled>
+          Lưu vào kho media
+        </button>
+        <a id="openGallery" href="" target="_blank" rel="noreferrer noopener" class="btn btn-link">
+          Mở kho media
+        </a>
+      </div>
+
+      <div id="importResult" class="import-result" hidden>
+        <div id="importResultSummary" class="import-result-summary"></div>
+        <div id="importResultDetails" class="import-result-details"></div>
+        <button id="closeImportResult" type="button" class="btn btn-small">Đóng</button>
+      </div>
+
+      <div class="info-note">
+        <p>Cuộn trang để X tải thêm bài viết, sau đó thu thập lại.</p>
+      </div>
+    </main>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Browser extension uses plain JS without TypeScript
+    "browser-extension/**",
   ]),
 ]);
 

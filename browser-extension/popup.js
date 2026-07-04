@@ -4,6 +4,23 @@
  */
 
 (function() {
+  if (!globalThis.X_MEDIA_CONFIG?.APP_BASE_URL) {
+    throw new Error("X Media Collector: APP_BASE_URL is not configured in config.js");
+  }
+
+  const APP_BASE_URL = X_MEDIA_CONFIG.APP_BASE_URL;
+
+  const connectApiUrl = new URL(X_MEDIA_CONFIG.API_CONNECT, APP_BASE_URL).toString();
+  const sessionApiUrl = new URL(X_MEDIA_CONFIG.API_SESSION, APP_BASE_URL).toString();
+  const importApiUrl = new URL(X_MEDIA_CONFIG.API_IMPORT, APP_BASE_URL).toString();
+  const connectPageUrl = new URL("/x-media/extension-connect", APP_BASE_URL).toString();
+  const galleryUrl = new URL("/x-media", APP_BASE_URL).toString();
+
+  console.debug("[X Media Collector] App base URL:", APP_BASE_URL);
+  console.debug("[X Media Collector] Connect endpoint:", connectApiUrl);
+  console.debug("[X Media Collector] Session endpoint:", sessionApiUrl);
+  console.debug("[X Media Collector] Import endpoint:", importApiUrl);
+
   const VALID_HOSTNAMES = new Set(['x.com', 'www.x.com', 'twitter.com', 'www.twitter.com']);
 
   const collectBtn = document.getElementById('collectBtn');
@@ -36,6 +53,7 @@
   const submitConnectBtn = document.getElementById('submitConnect');
   const cancelConnectBtn = document.getElementById('cancelConnect');
   const connectErrorEl = document.getElementById('connectError');
+  const envLabel = document.getElementById('envLabel');
 
   let currentResults = null;
   let selectedItems = new Set();
@@ -126,7 +144,7 @@
     selectAllCheckbox.checked = false;
 
     archiveSection.hidden = false;
-    openGalleryLink.href = X_MEDIA_CONFIG.APP_BASE_URL + '/x-media';
+    openGalleryLink.href = galleryUrl;
   }
 
   function createMediaCard(item) {
@@ -224,7 +242,7 @@
     connectCodeInput.value = '';
     connectErrorEl.hidden = true;
     submitConnectBtn.disabled = true;
-    openConnectPageLink.href = X_MEDIA_CONFIG.APP_BASE_URL + '/x-media/extension-connect';
+    openConnectPageLink.href = connectPageUrl;
   }
 
   function hideConnectModal() {
@@ -235,7 +253,7 @@
 
   async function checkSession() {
     try {
-      const response = await fetch(X_MEDIA_CONFIG.APP_BASE_URL + X_MEDIA_CONFIG.API_SESSION, {
+      const response = await fetch(sessionApiUrl, {
         credentials: 'include'
       });
 
@@ -410,7 +428,7 @@
     };
 
     try {
-      const response = await fetch(X_MEDIA_CONFIG.APP_BASE_URL + X_MEDIA_CONFIG.API_IMPORT, {
+      const response = await fetch(importApiUrl, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -498,7 +516,7 @@
     submitConnectBtn.disabled = true;
 
     try {
-      const response = await fetch(X_MEDIA_CONFIG.APP_BASE_URL + X_MEDIA_CONFIG.API_TOKEN, {
+      const response = await fetch(connectApiUrl, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -520,7 +538,7 @@
         [X_MEDIA_CONFIG.STORAGE_KEYS.EXTENSION_TOKEN]: extensionToken
       });
 
-      const sessionResponse = await fetch(X_MEDIA_CONFIG.APP_BASE_URL + X_MEDIA_CONFIG.API_SESSION, {
+      const sessionResponse = await fetch(sessionApiUrl, {
         credentials: 'include'
       });
       if (sessionResponse.ok) {
@@ -620,6 +638,8 @@
   }
 
   async function init() {
+    const hostname = new URL(APP_BASE_URL).hostname;
+    envLabel.textContent = 'Ứng dụng: ' + hostname;
     initEventListeners();
     await checkSession();
     const hasResults = await loadSavedResult();

@@ -49,26 +49,33 @@ browser-extension/
 
 ## Cách chuyển đổi giữa localhost và production
 
+**Mặc định:** Production (`https://lich-su-chi-tien.vercel.app`)
+
 ### Local development
 
 1. Mở `browser-extension/config.js`
-2. Đảm bảo `APP_BASE_URL` là `"http://localhost:3000"`
+2. Thay đổi `APP_BASE_URL` thành `"http://localhost:3000"`
 3. Tải lại extension tại `chrome://extensions`
+4. Tạo mã kết nối mới từ trang local
 
 ### Production
 
 1. Mở `browser-extension/config.js`
-2. Thay đổi `APP_BASE_URL` thành `"https://lich-su-chi-tien.vercel.app"`
+2. Đảm bảo `APP_BASE_URL` là `"https://lich-su-chi-tien.vercel.app"`
 3. Tải lại extension tại `chrome://extensions`
 4. Tạo mã kết nối mới từ trang production
 
-**Lưu ý:** Mỗi khi thay đổi config.js, bạn cần tải lại extension và tạo mã kết nối mới.
-
 ## Cách tải lại sau khi thay đổi code
 
-1. Truy cập `chrome://extensions`
-2. Tìm "X Media Collector"
-3. Nhấn nút tải lại (biểu tượng làm mới)
+1. Lưu các thay đổi trong `config.js`
+2. Truy cập `chrome://extensions`
+3. Tìm "X Media Collector"
+4. Nhấn nút tải lại (biểu tượng làm mới)
+5. Đóng popup cũ nếu đang mở
+6. Tải lại trang X
+7. Tạo mã kết nối mới từ trang kết nối
+
+**Quan trọng:** Mỗi khi thay đổi `config.js`, bạn cần tải lại extension và tạo mã kết nối mới. Mã kết nối từ localhost không thể dùng với production và ngược lại.
 
 ## Quyền được yêu cầu
 

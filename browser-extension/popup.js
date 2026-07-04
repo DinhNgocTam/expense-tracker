@@ -4,19 +4,21 @@
  */
 
 (function() {
-  if (!globalThis.X_MEDIA_CONFIG?.APP_BASE_URL) {
+  const config = globalThis.X_MEDIA_CONFIG;
+
+  if (!config?.APP_BASE_URL) {
     throw new Error("X Media Collector: APP_BASE_URL is not configured in config.js");
   }
 
-  const APP_BASE_URL = X_MEDIA_CONFIG.APP_BASE_URL;
+  const APP_BASE_URL = config.APP_BASE_URL;
 
-  const connectApiUrl = new URL(X_MEDIA_CONFIG.API_CONNECT, APP_BASE_URL).toString();
-  const sessionApiUrl = new URL(X_MEDIA_CONFIG.API_SESSION, APP_BASE_URL).toString();
-  const importApiUrl = new URL(X_MEDIA_CONFIG.API_IMPORT, APP_BASE_URL).toString();
-  const connectPageUrl = new URL("/x-media/extension-connect", APP_BASE_URL).toString();
-  const galleryUrl = new URL("/x-media", APP_BASE_URL).toString();
+  const connectApiUrl = new URL(config.API_CONNECT, APP_BASE_URL).toString();
+  const sessionApiUrl = new URL(config.API_SESSION, APP_BASE_URL).toString();
+  const importApiUrl = new URL(config.API_IMPORT, APP_BASE_URL).toString();
+  const connectPageUrl = new URL(config.CONNECT_PAGE, APP_BASE_URL).toString();
+  const galleryUrl = new URL(config.GALLERY_PAGE, APP_BASE_URL).toString();
 
-  console.debug("[X Media Collector] App base URL:", APP_BASE_URL);
+  console.debug("[X Media Collector] APP_BASE_URL:", APP_BASE_URL);
   console.debug("[X Media Collector] Connect endpoint:", connectApiUrl);
   console.debug("[X Media Collector] Session endpoint:", sessionApiUrl);
   console.debug("[X Media Collector] Import endpoint:", importApiUrl);
@@ -56,9 +58,34 @@
   const envLabel = document.getElementById('envLabel');
 
   let currentResults = null;
-  let selectedItems = new Set();
-  let extensionToken = null;
-  let authEmail = null;
+  let selectedMediaIds = new Set();
+  let isArchiving = false;
+
+  const connectionState = {
+    connected: false,
+    token: null,
+    email: null
+  };
+
+  function updateArchiveButtonState() {
+    archiveBtn.disabled = !connectionState.connected || selectedMediaIds.size === 0 || isArchiving;
+    console.debug("[X Media Collector] Archive button state", {
+      connected: connectionState.connected,
+      selectedCount: selectedMediaIds.size,
+      isArchiving: isArchiving,
+      disabled: archiveBtn.disabled
+    });
+  }
+
+  function updateSelectedCount() {
+    const count = selectedMediaIds.size;
+    if (count > 0) {
+      selectedCountEl.textContent = 'Đã chọn: ' + count;
+    } else {
+      selectedCountEl.textContent = '';
+    }
+    updateArchiveButtonState();
+  }
 
   function setStatus(message, type) {
     statusText.textContent = message;
@@ -92,6 +119,8 @@
   }
 
   function updateAuthStatus(connected, email) {
+    connectionState.connected = connected;
+    connectionState.email = email;
     if (connected && email) {
       authStatus.className = 'auth-status connected';
       authStatusText.textContent = email;
@@ -102,20 +131,20 @@
       authStatusText.textContent = 'Chưa kết nối';
       connectBtn.textContent = 'Kết nối';
       collectBtn.disabled = true;
-      extensionToken = null;
-      authEmail = null;
+      connectionState.token = null;
+      connectionState.email = null;
     }
+    updateArchiveButtonState();
   }
 
   function updateSelectedCount() {
-    const count = selectedItems.size;
+    const count = selectedMediaIds.size;
     if (count > 0) {
       selectedCountEl.textContent = 'Đã chọn: ' + count;
-      archiveBtn.disabled = !extensionToken;
     } else {
       selectedCountEl.textContent = '';
-      archiveBtn.disabled = true;
     }
+    updateArchiveButtonState();
   }
 
   function showResults(data) {
@@ -126,7 +155,7 @@
     importResultEl.hidden = true;
 
     currentResults = data;
-    selectedItems.clear();
+    selectedMediaIds.clear();
     updateSelectedCount();
 
     resultsSummary.textContent = 'Đã tìm thấy ' + data.count + ' ảnh';
@@ -155,13 +184,13 @@
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.className = 'media-checkbox';
-    checkbox.checked = selectedItems.has(item.mediaUrl);
+    checkbox.checked = selectedMediaIds.has(item.mediaUrl);
     checkbox.addEventListener('change', function() {
       if (this.checked) {
-        selectedItems.add(item.mediaUrl);
+        selectedMediaIds.add(item.mediaUrl);
         card.classList.add('selected');
       } else {
-        selectedItems.delete(item.mediaUrl);
+        selectedMediaIds.delete(item.mediaUrl);
         card.classList.remove('selected');
       }
       updateSelectedCount();
@@ -228,9 +257,10 @@
   }
 
   function setButtonsEnabled(enabled) {
-    collectBtn.disabled = !enabled || !extensionToken;
+    isArchiving = !enabled;
+    collectBtn.disabled = !enabled || !connectionState.token;
     clearBtn.disabled = !enabled;
-    archiveBtn.disabled = !enabled || selectedItems.size === 0 || !extensionToken;
+    updateArchiveButtonState();
   }
 
   function isValidHostname(hostname) {
@@ -253,31 +283,62 @@
 
   async function checkSession() {
     try {
-      const response = await fetch(sessionApiUrl, {
+      const storedToken = await getStoredToken();
+
+      const headers = {
         credentials: 'include'
-      });
+      };
+      if (storedToken) {
+        headers['Authorization'] = 'Bearer ' + storedToken;
+      }
+
+      const response = await fetch(sessionApiUrl, headers);
 
       if (response.ok) {
         const data = await response.json();
+
         if (data.authenticated && data.user && data.user.email) {
-          const storedToken = await getStoredToken();
-          if (storedToken) {
-            extensionToken = storedToken;
-            authEmail = data.user.email;
-            updateAuthStatus(true, authEmail);
+          if (data.extensionTokenValid === false) {
+            console.debug('[X Media Collector] Extension token invalid:', data.extensionTokenError);
+            if (storedToken) {
+              await chrome.storage.local.remove(config.STORAGE_KEYS.EXTENSION_TOKEN);
+            }
+            connectionState.token = null;
+            connectionState.email = data.user.email;
+            connectionState.connected = false;
+            updateAuthStatus(false);
+            updateArchiveButtonState();
             return;
           }
+
+          if (storedToken) {
+            connectionState.token = storedToken;
+            connectionState.email = data.user.email;
+            connectionState.connected = true;
+            updateAuthStatus(true, connectionState.email);
+            updateArchiveButtonState();
+            console.debug('[X Media Collector] Session restored', {
+              email: connectionState.email,
+              hasToken: true,
+              extensionTokenValid: data.extensionTokenValid
+            });
+            return;
+          }
+          console.debug('[X Media Collector] Session valid but no token stored');
         }
       }
     } catch (e) {
+      console.debug('[X Media Collector] Session check failed:', e.message);
     }
+    connectionState.connected = false;
+    connectionState.token = null;
     updateAuthStatus(false);
   }
 
   async function getStoredToken() {
     try {
-      const result = await chrome.storage.local.get(X_MEDIA_CONFIG.STORAGE_KEYS.EXTENSION_TOKEN);
-      return result[X_MEDIA_CONFIG.STORAGE_KEYS.EXTENSION_TOKEN] || null;
+      const result = await chrome.storage.local.get(config.STORAGE_KEYS.EXTENSION_TOKEN);
+      return result[config.STORAGE_KEYS.EXTENSION_TOKEN] || null;
     } catch (e) {
       return null;
     }
@@ -285,9 +346,9 @@
 
   async function loadSavedResult() {
     try {
-      const result = await chrome.storage.local.get(X_MEDIA_CONFIG.STORAGE_KEYS.LAST_RESULT);
-      if (result && result[X_MEDIA_CONFIG.STORAGE_KEYS.LAST_RESULT]) {
-        const data = result[X_MEDIA_CONFIG.STORAGE_KEYS.LAST_RESULT];
+      const result = await chrome.storage.local.get(config.STORAGE_KEYS.LAST_RESULT);
+      if (result && result[config.STORAGE_KEYS.LAST_RESULT]) {
+        const data = result[config.STORAGE_KEYS.LAST_RESULT];
         if (data && data.success && data.media && data.media.length > 0) {
           showResults(data);
           staleWarning.hidden = false;
@@ -302,7 +363,7 @@
 
   async function clearResults() {
     try {
-      await chrome.storage.local.remove(X_MEDIA_CONFIG.STORAGE_KEYS.LAST_RESULT);
+      await chrome.storage.local.remove(config.STORAGE_KEYS.LAST_RESULT);
     } catch (e) {
     }
     resultsEl.hidden = true;
@@ -310,7 +371,7 @@
     showEmpty();
     clearBtn.disabled = true;
     setStatus('');
-    selectedItems.clear();
+    selectedMediaIds.clear();
     currentResults = null;
     archiveSection.hidden = true;
     importResultEl.hidden = true;
@@ -382,7 +443,7 @@
         archiveSection.hidden = true;
       } else {
         await chrome.storage.local.set({
-          [X_MEDIA_CONFIG.STORAGE_KEYS.LAST_RESULT]: response
+          [config.STORAGE_KEYS.LAST_RESULT]: response
         });
         showResults(response);
         setStatus('Đã tìm thấy ' + response.count + ' ảnh', 'success');
@@ -401,7 +462,28 @@
   }
 
   async function importSelectedMedia() {
-    if (!currentResults || selectedItems.size === 0 || !extensionToken) {
+    console.debug('[X Media Collector] Archive button clicked', {
+      hasCurrentResults: !!currentResults,
+      selectedCount: selectedMediaIds.size,
+      hasToken: !!connectionState.token,
+      tokenLength: connectionState.token?.length ?? 0,
+      endpointHostname: new URL(importApiUrl).hostname
+    });
+
+    if (!currentResults) {
+      showError('Không có dữ liệu để lưu. Vui lòng thu thập ảnh trước.');
+      return;
+    }
+
+    if (selectedMediaIds.size === 0) {
+      showError('Vui lòng chọn ít nhất một ảnh để lưu.');
+      return;
+    }
+
+    if (!connectionState.token) {
+      showError('Phiên kết nối đã hết hạn. Vui lòng kết nối lại.');
+      connectionState.connected = false;
+      updateArchiveButtonState();
       return;
     }
 
@@ -409,7 +491,7 @@
     setButtonsEnabled(false);
 
     const selectedMedia = currentResults.media.filter(function(item) {
-      return selectedItems.has(item.mediaUrl);
+      return selectedMediaIds.has(item.mediaUrl);
     });
 
     const importPayload = {
@@ -433,7 +515,7 @@
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + extensionToken
+          'Authorization': 'Bearer ' + connectionState.token
         },
         body: JSON.stringify(importPayload)
       });
@@ -442,9 +524,22 @@
 
       if (!response.ok) {
         if (response.status === 401) {
-          showError('Token hết hạn. Vui lòng kết nối lại.');
-          extensionToken = null;
+          const errorCode = data.error?.code || 'EXTENSION_TOKEN_INVALID';
+          const errorMessages = {
+            EXTENSION_TOKEN_MISSING: 'Phiên kết nối không tồn tại. Vui lòng kết nối lại.',
+            EXTENSION_TOKEN_NOT_FOUND: 'Phiên kết nối không tồn tại. Vui lòng kết nối lại.',
+            EXTENSION_TOKEN_INVALID: 'Phiên kết nối không hợp lệ. Vui lòng kết nối lại.',
+            EXTENSION_TOKEN_REVOKED: 'Phiên kết nối đã bị thu hồi. Vui lòng kết nối lại.',
+            EXTENSION_TOKEN_EXPIRED: 'Phiên kết nối đã hết hạn. Vui lòng kết nối lại.',
+          };
+
+          showError(errorMessages[errorCode] || 'Phiên kết nối đã hết hạn. Vui lòng kết nối lại.');
+
+          await chrome.storage.local.remove(config.STORAGE_KEYS.EXTENSION_TOKEN);
+          connectionState.token = null;
+          connectionState.connected = false;
           updateAuthStatus(false);
+          updateArchiveButtonState();
           return;
         }
         showError(data.error?.message || 'Lưu thất bại.');
@@ -489,7 +584,7 @@
         resultsEl.hidden = true;
         archiveSection.hidden = true;
 
-        selectedItems.clear();
+        selectedMediaIds.clear();
         setStatus('Hoàn tất!', 'success');
       } else {
         showError(data.error?.message || 'Lưu thất bại.');
@@ -533,9 +628,9 @@
         return;
       }
 
-      extensionToken = data.data.token;
+      connectionState.token = data.data.token;
       await chrome.storage.local.set({
-        [X_MEDIA_CONFIG.STORAGE_KEYS.EXTENSION_TOKEN]: extensionToken
+        [config.STORAGE_KEYS.EXTENSION_TOKEN]: connectionState.token
       });
 
       const sessionResponse = await fetch(sessionApiUrl, {
@@ -544,15 +639,15 @@
       if (sessionResponse.ok) {
         const sessionData = await sessionResponse.json();
         if (sessionData.authenticated && sessionData.user) {
-          authEmail = sessionData.user.email;
+          connectionState.email = sessionData.user.email;
           await chrome.storage.local.set({
-            [X_MEDIA_CONFIG.STORAGE_KEYS.AUTH_EMAIL]: authEmail
+            [config.STORAGE_KEYS.AUTH_EMAIL]: connectionState.email
           });
         }
       }
 
       hideConnectModal();
-      updateAuthStatus(true, authEmail);
+      updateAuthStatus(true, connectionState.email);
       updateSelectedCount();
       setStatus('Đã kết nối thành công!', 'success');
 
@@ -610,10 +705,10 @@
         const checkbox = card.querySelector('input[type="checkbox"]');
         checkbox.checked = selectAllCheckbox.checked;
         if (selectAllCheckbox.checked) {
-          selectedItems.add(card.dataset.itemId);
+          selectedMediaIds.add(card.dataset.itemId);
           card.classList.add('selected');
         } else {
-          selectedItems.delete(card.dataset.itemId);
+          selectedMediaIds.delete(card.dataset.itemId);
           card.classList.remove('selected');
         }
       });

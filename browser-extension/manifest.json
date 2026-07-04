@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "X Media Collector",
+  "version": "0.1.0",
+  "description": "Thu thập các ảnh đang hiển thị trên X (Twitter). Đọc nội dung hiển thị trong trình duyệt, không truy cập cookies hay mật khẩu.",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://x.com/*",
+    "https://www.x.com/*",
+    "https://twitter.com/*",
+    "https://www.twitter.com/*",
+    "http://localhost:3000/*",
+    "https://lich-su-chi-tien.vercel.app/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "X Media Collector"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://x.com/*",
+        "https://www.x.com/*",
+        "https://twitter.com/*",
+        "https://www.twitter.com/*"
+      ],
+      "js": ["content-script.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

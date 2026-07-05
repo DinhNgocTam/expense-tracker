@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { XMediaItem, PaginatedItemsResponse } from "./types";
+import { XMediaItem, PaginatedItemsResponse, MediaType } from "./types";
 
 export interface CreateMediaItemInput {
   userId: string;
@@ -7,7 +7,7 @@ export interface CreateMediaItemInput {
   authorUsername: string | null;
   sourcePostUrl: string;
   caption: string | null;
-  mediaType: "image";
+  mediaType: MediaType;
   mediaIndex: number;
   originalMediaUrl: string | null;
   cloudinaryPublicId: string;
@@ -17,12 +17,17 @@ export interface CreateMediaItemInput {
   height?: number | null;
   format?: string | null;
   publishedAt?: string | null;
+  durationSeconds?: number | null;
+  thumbnailUrl?: string | null;
+  bitrate?: number | null;
+  contentType?: string | null;
 }
 
 export async function findExistingMediaItem(
   userId: string,
   postId: string,
-  mediaIndex: number
+  mediaIndex: number,
+  mediaType: MediaType
 ): Promise<XMediaItem | null> {
   const supabase = await createClient();
 
@@ -32,6 +37,7 @@ export async function findExistingMediaItem(
     .eq("user_id", userId)
     .eq("post_id", postId)
     .eq("media_index", mediaIndex)
+    .eq("media_type", mediaType)
     .single();
 
   if (error && error.code !== "PGRST116") {
@@ -63,6 +69,10 @@ export async function createMediaItem(input: CreateMediaItemInput): Promise<XMed
       height: input.height,
       format: input.format,
       published_at: input.publishedAt,
+      duration_seconds: input.durationSeconds,
+      thumbnail_url: input.thumbnailUrl,
+      bitrate: input.bitrate,
+      content_type: input.contentType,
     })
     .select()
     .single();

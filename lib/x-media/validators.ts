@@ -3,6 +3,9 @@ import { X_HOSTNAMES, ALLOWED_MEDIA_DOMAINS, type XHostname } from "./types";
 export const STATUS_PATH_REGEX = /^\/[\w_]+\/status\/(\d+)(?:\/.*)?$/;
 const MAX_URL_LENGTH = 2048;
 const MAX_MEDIA_PER_POST = 20;
+const MAX_VIDEOS_PER_REQUEST = 5;
+const MAX_DURATION_SECONDS = 3600;
+const VIDEO_HOSTNAME = "video.twimg.com";
 
 export function isValidXHostname(hostname: string): hostname is XHostname {
   return X_HOSTNAMES.includes(hostname as XHostname);
@@ -157,9 +160,13 @@ export interface ExtensionImportItem {
   authorUsername: string | null;
   caption: string | null;
   mediaIndex: number;
-  mediaType: "image";
+  mediaType: "image" | "video";
   mediaUrl: string;
   altText: string | null;
+  thumbnailUrl?: string | null;
+  durationSeconds?: number | null;
+  bitrate?: number | null;
+  contentType?: string | null;
 }
 
 export function isValidPostId(id: string): boolean {
@@ -170,7 +177,7 @@ export function isValidMediaIndex(index: number): boolean {
   return Number.isInteger(index) && index >= 0 && index < 20;
 }
 
-export function isValidMediaUrl(url: string): boolean {
+export function isValidImageUrl(url: string): boolean {
   if (!url || typeof url !== "string") return false;
   if (url.length > MAX_URL_LENGTH) return false;
 
@@ -180,10 +187,67 @@ export function isValidMediaUrl(url: string): boolean {
     if (parsed.hostname !== "pbs.twimg.com") return false;
     if (!parsed.pathname.startsWith("/media/")) return false;
     if (parsed.username || parsed.password) return false;
+    if (parsed.hash) return false;
     return true;
   } catch {
     return false;
   }
+}
+
+export function isValidVideoUrl(url: string, contentType?: string | null): boolean {
+  if (!url || typeof url !== "string") return false;
+  if (url.length > MAX_URL_LENGTH) return false;
+
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return false;
+    if (parsed.hostname !== VIDEO_HOSTNAME) return false;
+    if (parsed.username || parsed.password) return false;
+    if (parsed.hash) return false;
+
+    const isMp4Url = parsed.pathname.endsWith(".mp4") || url.includes(".mp4");
+    const isMp4ContentType = contentType === "video/mp4";
+
+    if (!isMp4Url && !isMp4ContentType) {
+      return false;
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function isValidThumbnailUrl(url: string | null | undefined): boolean {
+  if (!url) return true;
+  if (typeof url !== "string") return false;
+  if (url.length > MAX_URL_LENGTH) return false;
+
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:") return false;
+    if (!["pbs.twimg.com", "video.twimg.com", "ton.twimg.com"].includes(parsed.hostname)) {
+      return false;
+    }
+    if (parsed.username || parsed.password) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function isValidDurationSeconds(duration: number | null | undefined): boolean {
+  if (duration === null || duration === undefined) return true;
+  if (typeof duration !== "number") return false;
+  if (duration < 0 || duration > MAX_DURATION_SECONDS) return false;
+  return true;
+}
+
+export function isValidBitrate(bitrate: number | null | undefined): boolean {
+  if (bitrate === null || bitrate === undefined) return true;
+  if (typeof bitrate !== "number") return false;
+  if (bitrate <= 0) return false;
+  return true;
 }
 
 export function normalizePostUrl(postUrl: string): { username: string | null; postId: string } | null {
@@ -233,6 +297,7 @@ export function validateExtensionImportRequest(request: unknown): {
   }
 
   const validatedItems: ExtensionImportItem[] = [];
+  let videoCount = 0;
 
   for (let i = 0; i < req.items.length; i++) {
     const item = req.items[i];
@@ -242,6 +307,11 @@ export function validateExtensionImportRequest(request: unknown): {
     }
 
     const it = item as Record<string, unknown>;
+    const mediaType = it.mediaType as string;
+
+    if (mediaType !== "image" && mediaType !== "video") {
+      return { valid: false, error: `Invalid mediaType at index ${i}. Must be "image" or "video"` };
+    }
 
     if (typeof it.postId !== "string" || !isValidPostId(it.postId)) {
       return { valid: false, error: `Invalid postId at index ${i}` };
@@ -255,12 +325,39 @@ export function validateExtensionImportRequest(request: unknown): {
       return { valid: false, error: `Invalid mediaIndex at index ${i}` };
     }
 
-    if (typeof it.mediaUrl !== "string" || !isValidMediaUrl(it.mediaUrl)) {
-      return { valid: false, error: `Invalid mediaUrl at index ${i}` };
-    }
+    if (mediaType === "image") {
+      if (typeof it.mediaUrl !== "string" || !isValidImageUrl(it.mediaUrl)) {
+        return { valid: false, error: `Invalid image mediaUrl at index ${i}` };
+      }
+    } else if (mediaType === "video") {
+      videoCount++;
+      if (videoCount > MAX_VIDEOS_PER_REQUEST) {
+        return { valid: false, error: `Maximum ${MAX_VIDEOS_PER_REQUEST} videos per request` };
+      }
 
-    if (it.mediaType !== "image") {
-      return { valid: false, error: `Only image media is supported at index ${i}` };
+      const contentType = it.contentType as string | null | undefined;
+      if (typeof it.mediaUrl !== "string" || !isValidVideoUrl(it.mediaUrl, contentType)) {
+        return { valid: false, error: `Invalid video mediaUrl at index ${i}. Must be direct MP4 from video.twimg.com` };
+      }
+
+      const thumbnailUrl = it.thumbnailUrl as string | null | undefined;
+      if (!isValidThumbnailUrl(thumbnailUrl)) {
+        return { valid: false, error: `Invalid thumbnailUrl at index ${i}` };
+      }
+
+      const durationSeconds = it.durationSeconds as number | null | undefined;
+      if (!isValidDurationSeconds(durationSeconds)) {
+        return { valid: false, error: `Invalid durationSeconds at index ${i}` };
+      }
+
+      const bitrate = it.bitrate as number | null | undefined;
+      if (!isValidBitrate(bitrate)) {
+        return { valid: false, error: `Invalid bitrate at index ${i}` };
+      }
+
+      if (contentType && contentType !== "video/mp4") {
+        return { valid: false, error: `Invalid contentType at index ${i}. Must be "video/mp4"` };
+      }
     }
 
     const normalized = normalizePostUrl(it.postUrl);
@@ -282,9 +379,13 @@ export function validateExtensionImportRequest(request: unknown): {
       authorUsername: normalized.username,
       caption: typeof it.caption === "string" ? it.caption.trim().substring(0, 500) : null,
       mediaIndex: it.mediaIndex as number,
-      mediaType: "image",
+      mediaType: mediaType as "image" | "video",
       mediaUrl: it.mediaUrl as string,
       altText: typeof it.altText === "string" ? it.altText.trim().substring(0, 200) : null,
+      thumbnailUrl: typeof it.thumbnailUrl === "string" ? it.thumbnailUrl : null,
+      durationSeconds: typeof it.durationSeconds === "number" ? it.durationSeconds : null,
+      bitrate: typeof it.bitrate === "number" ? it.bitrate : null,
+      contentType: typeof it.contentType === "string" ? it.contentType : null,
     });
   }
 

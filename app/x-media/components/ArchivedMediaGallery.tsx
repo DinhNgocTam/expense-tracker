@@ -47,11 +47,22 @@ export default function ArchivedMediaGallery({
     });
   };
 
+  const formatDuration = (seconds: number | null) => {
+    if (!seconds) return null;
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return mins + ":" + (secs < 10 ? "0" : "") + secs;
+  };
+
+  const imageCount = items.filter(i => i.media_type === "image").length;
+  const videoCount = items.filter(i => i.media_type === "video").length;
+  const totalLabel = total + " media" + (imageCount > 0 && videoCount > 0 ? ` (${imageCount} ảnh, ${videoCount} video)` : imageCount > 0 ? ` ${imageCount} ảnh` : videoCount > 0 ? ` ${videoCount} video` : "");
+
   return (
     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold">Bộ sưu tập đã lưu</h2>
-        <span className="text-sm text-gray-500">{total} hình ảnh</span>
+        <span className="text-sm text-gray-500">{totalLabel}</span>
       </div>
 
       {deleteError && (
@@ -76,14 +87,49 @@ export default function ArchivedMediaGallery({
                 key={item.id}
                 className="group relative bg-gray-50 rounded-lg overflow-hidden border border-gray-200"
               >
-                <div className="aspect-square">
-                  <img
-                    src={item.cloudinary_secure_url}
-                    alt={`Image from @${item.author_username || "unknown"}`}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                </div>
+                {item.media_type === "video" ? (
+                  <div className="aspect-square relative">
+                    {item.thumbnail_url ? (
+                      <img
+                        src={item.thumbnail_url}
+                        alt={`Video from @${item.author_username || "unknown"}`}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                        <span className="text-4xl">🎬</span>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <a
+                        href={item.cloudinary_secure_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-white/90 hover:bg-white text-gray-800 font-medium py-2 px-4 rounded-full text-sm flex items-center gap-2 shadow-lg"
+                      >
+                        ▶ Phát
+                      </a>
+                    </div>
+                    <div className="absolute top-2 left-2 bg-orange-500 text-white text-xs font-medium py-1 px-2 rounded">
+                      Video
+                    </div>
+                    {item.duration_seconds && (
+                      <div className="absolute top-2 right-2 bg-black/70 text-white text-xs font-medium py-1 px-2 rounded">
+                        {formatDuration(item.duration_seconds)}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="aspect-square">
+                    <img
+                      src={item.cloudinary_secure_url}
+                      alt={`Image from @${item.author_username || "unknown"}`}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                )}
 
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
                   <a
@@ -113,7 +159,7 @@ export default function ArchivedMediaGallery({
 
                 {showDeleteConfirm === item.id && (
                   <div className="absolute inset-0 bg-white flex flex-col items-center justify-center p-4 gap-3">
-                    <p className="text-sm text-gray-700 text-center">Xóa hình ảnh này?</p>
+                    <p className="text-sm text-gray-700 text-center">Xóa media này?</p>
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleDelete(item.id)}

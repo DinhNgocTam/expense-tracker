@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createHash } from "crypto";
 import { validateExtensionImportRequest } from "@/lib/x-media/validators";
-import { uploadImageFromUrl, deleteImage } from "@/lib/cloudinary/server";
+import { uploadImageFromUrl, uploadVideoFromUrl, deleteImage, deleteVideo } from "@/lib/cloudinary/server";
 import { findExistingMediaItem, createMediaItem } from "@/lib/x-media/repository";
-import type { ApiResponse } from "@/lib/x-media/types";
+import type { ApiResponse, MediaType } from "@/lib/x-media/types";
 
 const ALLOWED_ORIGINS = [
   "http://localhost:3000",
@@ -32,6 +32,7 @@ function hashToken(token: string): string {
 interface ImportResult {
   postId: string;
   mediaIndex: number;
+  mediaType: MediaType;
   status: "archived" | "skipped" | "failed";
   itemId?: string;
   reason?: string;
@@ -155,13 +156,14 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
     let failed = 0;
 
     for (const item of items) {
-      const existing = await findExistingMediaItem(userId, item.postId, item.mediaIndex);
+      const existing = await findExistingMediaItem(userId, item.postId, item.mediaIndex, item.mediaType);
 
       if (existing) {
         skipped++;
         results.push({
           postId: item.postId,
           mediaIndex: item.mediaIndex,
+          mediaType: item.mediaType,
           status: "skipped",
           itemId: existing.id,
           reason: "DUPLICATE",
@@ -171,21 +173,32 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
 
       let uploadResult;
       try {
-        uploadResult = await uploadImageFromUrl(
-          item.mediaUrl,
-          userId,
-          item.authorUsername,
-          item.postId,
-          item.mediaIndex
-        );
+        if (item.mediaType === "video") {
+          uploadResult = await uploadVideoFromUrl(
+            item.mediaUrl,
+            userId,
+            item.authorUsername,
+            item.postId,
+            item.mediaIndex
+          );
+        } else {
+          uploadResult = await uploadImageFromUrl(
+            item.mediaUrl,
+            userId,
+            item.authorUsername,
+            item.postId,
+            item.mediaIndex
+          );
+        }
       } catch (uploadError) {
         console.error("Cloudinary upload error:", uploadError);
         failed++;
         results.push({
           postId: item.postId,
           mediaIndex: item.mediaIndex,
+          mediaType: item.mediaType,
           status: "failed",
-          reason: "CLOUDINARY_UPLOAD_FAILED",
+          reason: item.mediaType === "video" ? "VIDEO_UPLOAD_FAILED" : "CLOUDINARY_UPLOAD_FAILED",
         });
         continue;
       }
@@ -196,7 +209,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
         authorUsername: item.authorUsername,
         sourcePostUrl: item.postUrl,
         caption: item.caption,
-        mediaType: "image",
+        mediaType: item.mediaType,
         mediaIndex: item.mediaIndex,
         originalMediaUrl: item.mediaUrl,
         cloudinaryPublicId: uploadResult.publicId,
@@ -206,11 +219,19 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
         height: uploadResult.height,
         format: uploadResult.format,
         publishedAt: null,
+        durationSeconds: item.mediaType === "video" && "duration" in uploadResult ? uploadResult.duration : null,
+        thumbnailUrl: item.thumbnailUrl || null,
+        bitrate: item.mediaType === "video" && "bitrate" in uploadResult ? uploadResult.bitrate : null,
+        contentType: item.contentType || null,
       });
 
       if (!newItem) {
         try {
-          await deleteImage(uploadResult.publicId);
+          if (item.mediaType === "video") {
+            await deleteVideo(uploadResult.publicId);
+          } else {
+            await deleteImage(uploadResult.publicId);
+          }
         } catch {
           console.error("Failed to rollback Cloudinary upload:", uploadResult.publicId);
         }
@@ -218,6 +239,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
         results.push({
           postId: item.postId,
           mediaIndex: item.mediaIndex,
+          mediaType: item.mediaType,
           status: "failed",
           reason: "DATABASE_INSERT_FAILED",
         });
@@ -228,6 +250,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
       results.push({
         postId: item.postId,
         mediaIndex: item.mediaIndex,
+        mediaType: item.mediaType,
         status: "archived",
         itemId: newItem.id,
       });

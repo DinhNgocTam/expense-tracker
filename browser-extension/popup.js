@@ -162,7 +162,31 @@
     selectedMediaIds.clear();
     updateSelectedCount();
 
-    resultsSummary.textContent = 'Đã tìm thấy ' + data.count + ' ảnh';
+    const imageCount = data.media.filter(function(m) { return m.mediaType === 'image'; }).length;
+    const videoCount = data.media.filter(function(m) { return m.mediaType === 'video'; }).length;
+    const supportedVideoCount = data.media.filter(function(m) { return m.mediaType === 'video' && m.supported !== false; }).length;
+    const unsupportedVideoCount = videoCount - supportedVideoCount;
+
+    let summaryText = '';
+    if (imageCount > 0) {
+      summaryText += imageCount + ' ảnh';
+    }
+    if (videoCount > 0) {
+      if (summaryText) summaryText += ' và ';
+      summaryText += supportedVideoCount + ' video';
+      if (unsupportedVideoCount > 0) {
+        summaryText += ' ('
+        + supportedVideoCount + ' hỗ trợ';
+        if (unsupportedVideoCount > 0) {
+          summaryText += ', ' + unsupportedVideoCount + ' không hỗ trợ';
+        }
+        summaryText += ')';
+      }
+    }
+    if (!summaryText) {
+      summaryText = 'Không có media nào';
+    }
+    resultsSummary.textContent = summaryText;
 
     const hostname = new URL(data.pageUrl).hostname;
     pageUrlEl.textContent = hostname + new URL(data.pageUrl).pathname;
@@ -183,31 +207,96 @@
   function createMediaCard(item) {
     const card = document.createElement('div');
     card.className = 'media-card';
+    if (item.supported === false) {
+      card.classList.add('unsupported');
+    }
     card.dataset.itemId = item.mediaUrl;
+    card.dataset.mediaType = item.mediaType;
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.className = 'media-checkbox';
     checkbox.checked = selectedMediaIds.has(item.mediaUrl);
-    checkbox.addEventListener('change', function() {
-      if (this.checked) {
-        selectedMediaIds.add(item.mediaUrl);
-        card.classList.add('selected');
-      } else {
-        selectedMediaIds.delete(item.mediaUrl);
-        card.classList.remove('selected');
-      }
-      updateSelectedCount();
-    });
+    checkbox.disabled = item.supported === false;
 
-    const thumbnail = document.createElement('img');
-    thumbnail.className = 'media-thumbnail';
-    thumbnail.src = item.previewUrl || item.mediaUrl;
-    thumbnail.alt = item.altText || 'Media thumbnail';
-    thumbnail.loading = 'lazy';
+    if (item.supported !== false) {
+      checkbox.addEventListener('change', function() {
+        if (this.checked) {
+          selectedMediaIds.add(item.mediaUrl);
+          card.classList.add('selected');
+        } else {
+          selectedMediaIds.delete(item.mediaUrl);
+          card.classList.remove('selected');
+        }
+        updateSelectedCount();
+      });
+    }
+
+    const thumbnail = document.createElement('div');
+    thumbnail.className = 'media-thumbnail-wrapper';
+
+    if (item.mediaType === 'video' && item.thumbnailUrl) {
+      const videoThumbnail = document.createElement('img');
+      videoThumbnail.className = 'media-thumbnail';
+      videoThumbnail.src = item.thumbnailUrl;
+      videoThumbnail.alt = item.altText || 'Video thumbnail';
+      videoThumbnail.loading = 'lazy';
+      thumbnail.appendChild(videoThumbnail);
+
+      const videoBadge = document.createElement('span');
+      videoBadge.className = 'media-type-badge video-badge';
+      videoBadge.textContent = 'Video';
+      thumbnail.appendChild(videoBadge);
+
+      if (item.durationSeconds) {
+        const durationBadge = document.createElement('span');
+        durationBadge.className = 'duration-badge';
+        durationBadge.textContent = formatDuration(item.durationSeconds);
+        thumbnail.appendChild(durationBadge);
+      }
+    } else if (item.mediaType === 'video' && !item.thumbnailUrl) {
+      const placeholder = document.createElement('div');
+      placeholder.className = 'media-placeholder video-placeholder';
+      placeholder.textContent = '🎬';
+      thumbnail.appendChild(placeholder);
+
+      const videoBadge = document.createElement('span');
+      videoBadge.className = 'media-type-badge video-badge';
+      videoBadge.textContent = 'Video';
+      thumbnail.appendChild(videoBadge);
+    } else {
+      const img = document.createElement('img');
+      img.className = 'media-thumbnail';
+      img.src = item.previewUrl || item.mediaUrl;
+      img.alt = item.altText || 'Image thumbnail';
+      img.loading = 'lazy';
+      thumbnail.appendChild(img);
+
+      const imageBadge = document.createElement('span');
+      imageBadge.className = 'media-type-badge image-badge';
+      imageBadge.textContent = 'Ảnh';
+      thumbnail.appendChild(imageBadge);
+    }
 
     const info = document.createElement('div');
     info.className = 'media-info';
+
+    if (item.unsupportedReason) {
+      const unsupportedMsg = document.createElement('div');
+      unsupportedMsg.className = 'unsupported-message';
+      if (item.unsupportedReason === 'BLOB_SOURCE_REQUIRES_NETWORK_DISCOVERY') {
+        unsupportedMsg.textContent = 'X đang phát video bằng blob URL nhưng chưa tìm thấy nguồn MP4. Hãy phát video vài giây rồi thu thập lại.';
+      } else if (item.unsupportedReason === 'DIRECT_MP4_NOT_DISCOVERED') {
+        unsupportedMsg.textContent = 'Chưa tìm thấy URL MP4 trực tiếp. Hãy phát video hoặc chờ trang tải xong rồi thu thập lại.';
+      } else if (item.unsupportedReason === 'OBSERVER_NOT_READY') {
+        unsupportedMsg.textContent = 'Trình quan sát video chưa hoạt động. Hãy tải lại tab X.';
+      } else if (item.unsupportedReason === 'UNASSOCIATED_VIDEO') {
+        unsupportedMsg.textContent = 'Đã tìm thấy nguồn MP4 nhưng chưa liên kết được với bài viết.';
+      } else {
+        unsupportedMsg.textContent = 'Video này chưa được hỗ trợ';
+      }
+      info.appendChild(unsupportedMsg);
+    }
 
     if (item.authorUsername) {
       const author = document.createElement('div');
@@ -244,13 +333,15 @@
       links.appendChild(postLink);
     }
 
-    const imageLink = document.createElement('a');
-    imageLink.className = 'media-link';
-    imageLink.href = item.mediaUrl;
-    imageLink.textContent = 'Mở ảnh gốc';
-    imageLink.target = '_blank';
-    imageLink.rel = 'noreferrer noopener';
-    links.appendChild(imageLink);
+    if (item.supported !== false) {
+      const mediaLink = document.createElement('a');
+      mediaLink.className = 'media-link';
+      mediaLink.href = item.mediaUrl;
+      mediaLink.textContent = item.mediaType === 'video' ? 'Mở video gốc' : 'Mở ảnh gốc';
+      mediaLink.target = '_blank';
+      mediaLink.rel = 'noreferrer noopener';
+      links.appendChild(mediaLink);
+    }
 
     info.appendChild(links);
     card.appendChild(checkbox);
@@ -258,6 +349,13 @@
     card.appendChild(info);
 
     return card;
+  }
+
+  function formatDuration(seconds) {
+    if (!seconds) return '';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return mins + ':' + (secs < 10 ? '0' : '') + secs;
   }
 
   function setButtonsEnabled(enabled) {
@@ -524,8 +622,36 @@
       return selectedMediaIds.has(item.mediaUrl);
     });
 
+    const videoCount = selectedMedia.filter(function(item) {
+      return item.mediaType === 'video';
+    }).length;
+
+    if (videoCount > 5) {
+      showError('Mỗi lần chỉ có thể lưu tối đa 5 video.');
+      isArchiving = false;
+      clearBtn.disabled = false;
+      updateArchiveButtonState();
+      return;
+    }
+
     const importPayload = {
       items: selectedMedia.map(function(item) {
+        if (item.mediaType === 'video') {
+          return {
+            postId: item.postId,
+            postUrl: item.postUrl,
+            authorUsername: item.authorUsername,
+            caption: item.caption,
+            mediaIndex: item.mediaIndex,
+            mediaType: 'video',
+            mediaUrl: item.mediaUrl,
+            altText: item.altText,
+            thumbnailUrl: item.thumbnailUrl || null,
+            durationSeconds: item.durationSeconds || null,
+            bitrate: item.bitrate || null,
+            contentType: 'video/mp4'
+          };
+        }
         return {
           postId: item.postId,
           postUrl: item.postUrl,
@@ -534,7 +660,11 @@
           mediaIndex: item.mediaIndex,
           mediaType: 'image',
           mediaUrl: item.mediaUrl,
-          altText: item.altText
+          altText: item.altText,
+          thumbnailUrl: null,
+          durationSeconds: null,
+          bitrate: null,
+          contentType: null
         };
       })
     };
@@ -743,6 +873,9 @@
     selectAllCheckbox.addEventListener('change', function() {
       const cards = resultsList.querySelectorAll('.media-card');
       cards.forEach(function(card) {
+        if (card.classList.contains('unsupported')) {
+          return;
+        }
         const checkbox = card.querySelector('input[type="checkbox"]');
         checkbox.checked = selectAllCheckbox.checked;
         if (selectAllCheckbox.checked) {

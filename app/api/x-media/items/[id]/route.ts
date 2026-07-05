@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getMediaItemById, deleteMediaItem } from "@/lib/x-media/repository";
-import { deleteImage } from "@/lib/cloudinary/server";
+import { deleteMediaAsset } from "@/lib/cloudinary/server";
 import type { ApiResponse } from "@/lib/x-media/types";
 
 export async function DELETE(
@@ -73,7 +73,10 @@ export async function DELETE(
 
     let cloudinaryDeleted = false;
     try {
-      cloudinaryDeleted = await deleteImage(mediaItem.cloudinary_public_id);
+      cloudinaryDeleted = await deleteMediaAsset(
+        mediaItem.cloudinary_public_id,
+        mediaItem.media_type
+      );
     } catch (cloudinaryError) {
       console.error("Cloudinary delete warning:", cloudinaryError);
     }

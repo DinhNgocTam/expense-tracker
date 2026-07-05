@@ -13,13 +13,14 @@
   const APP_BASE_URL = config.APP_BASE_URL;
 
   const connectApiUrl = new URL(config.API_CONNECT, APP_BASE_URL).toString();
+  const tokenApiUrl = new URL(config.API_TOKEN, APP_BASE_URL).toString();
   const sessionApiUrl = new URL(config.API_SESSION, APP_BASE_URL).toString();
   const importApiUrl = new URL(config.API_IMPORT, APP_BASE_URL).toString();
   const connectPageUrl = new URL(config.CONNECT_PAGE, APP_BASE_URL).toString();
   const galleryUrl = new URL(config.GALLERY_PAGE, APP_BASE_URL).toString();
 
   console.debug("[X Media Collector] APP_BASE_URL:", APP_BASE_URL);
-  console.debug("[X Media Collector] Connect endpoint:", connectApiUrl);
+  console.debug("[X Media Collector] Token endpoint:", tokenApiUrl);
   console.debug("[X Media Collector] Session endpoint:", sessionApiUrl);
   console.debug("[X Media Collector] Import endpoint:", importApiUrl);
 
@@ -60,21 +61,28 @@
   let currentResults = null;
   let selectedMediaIds = new Set();
   let isArchiving = false;
+  let isCollecting = false;
 
   const connectionState = {
     connected: false,
     token: null,
+    tokenValid: false,
     email: null
   };
 
   function updateArchiveButtonState() {
-    archiveBtn.disabled = !connectionState.connected || selectedMediaIds.size === 0 || isArchiving;
+    archiveBtn.disabled = !connectionState.connected || !connectionState.tokenValid || selectedMediaIds.size === 0 || isArchiving;
     console.debug("[X Media Collector] Archive button state", {
       connected: connectionState.connected,
+      tokenValid: connectionState.tokenValid,
       selectedCount: selectedMediaIds.size,
       isArchiving: isArchiving,
       disabled: archiveBtn.disabled
     });
+  }
+
+  function updateCollectButtonState() {
+    collectBtn.disabled = isCollecting;
   }
 
   function updateSelectedCount() {
@@ -95,10 +103,7 @@
   function showError(message) {
     errorText.textContent = message;
     errorState.hidden = false;
-    resultsEl.hidden = true;
-    emptyState.hidden = true;
     staleWarning.hidden = true;
-    archiveSection.hidden = true;
     importResultEl.hidden = true;
   }
 
@@ -118,22 +123,21 @@
     emptyState.hidden = true;
   }
 
-  function updateAuthStatus(connected, email) {
+  function updateAuthStatus(connected, email, tokenValid) {
     connectionState.connected = connected;
-    connectionState.email = email;
+    connectionState.tokenValid = tokenValid || false;
+    connectionState.email = email || null;
     if (connected && email) {
       authStatus.className = 'auth-status connected';
       authStatusText.textContent = email;
       connectBtn.textContent = 'Đổi tài khoản';
-      collectBtn.disabled = false;
     } else {
       authStatus.className = 'auth-status disconnected';
       authStatusText.textContent = 'Chưa kết nối';
       connectBtn.textContent = 'Kết nối';
-      collectBtn.disabled = true;
       connectionState.token = null;
-      connectionState.email = null;
     }
+    updateCollectButtonState();
     updateArchiveButtonState();
   }
 
@@ -258,7 +262,7 @@
 
   function setButtonsEnabled(enabled) {
     isArchiving = !enabled;
-    collectBtn.disabled = !enabled || !connectionState.token;
+    updateCollectButtonState();
     clearBtn.disabled = !enabled;
     updateArchiveButtonState();
   }
@@ -306,8 +310,8 @@
             connectionState.token = null;
             connectionState.email = data.user.email;
             connectionState.connected = false;
-            updateAuthStatus(false);
-            updateArchiveButtonState();
+            connectionState.tokenValid = false;
+            updateAuthStatus(false, data.user.email, false);
             return;
           }
 
@@ -315,8 +319,8 @@
             connectionState.token = storedToken;
             connectionState.email = data.user.email;
             connectionState.connected = true;
-            updateAuthStatus(true, connectionState.email);
-            updateArchiveButtonState();
+            connectionState.tokenValid = true;
+            updateAuthStatus(true, connectionState.email, true);
             console.debug('[X Media Collector] Session restored', {
               email: connectionState.email,
               hasToken: true,
@@ -325,6 +329,10 @@
             return;
           }
           console.debug('[X Media Collector] Session valid but no token stored');
+          connectionState.connected = true;
+          connectionState.tokenValid = false;
+          updateAuthStatus(true, data.user.email, false);
+          return;
         }
       }
     } catch (e) {
@@ -332,7 +340,8 @@
     }
     connectionState.connected = false;
     connectionState.token = null;
-    updateAuthStatus(false);
+    connectionState.tokenValid = false;
+    updateAuthStatus(false, null, false);
   }
 
   async function getStoredToken() {
@@ -381,8 +390,10 @@
   async function collectMedia() {
     hideError();
     importResultEl.hidden = true;
+    isCollecting = true;
     setStatus('Đang thu thập...', 'loading');
-    setButtonsEnabled(false);
+    updateCollectButtonState();
+    clearBtn.disabled = true;
 
     try {
       const tabs = await chrome.tabs.query({
@@ -392,7 +403,9 @@
 
       if (!tabs || tabs.length === 0) {
         showError('Không tìm thấy tab đang hoạt động.');
-        setButtonsEnabled(true);
+        isCollecting = false;
+        updateCollectButtonState();
+        clearBtn.disabled = false;
         return;
       }
 
@@ -400,7 +413,9 @@
 
       if (!tab.url) {
         showError('Không thể đọc URL của tab.');
-        setButtonsEnabled(true);
+        isCollecting = false;
+        updateCollectButtonState();
+        clearBtn.disabled = false;
         return;
       }
 
@@ -409,13 +424,17 @@
         hostname = new URL(tab.url).hostname;
       } catch {
         showError('URL của tab không hợp lệ.');
-        setButtonsEnabled(true);
+        isCollecting = false;
+        updateCollectButtonState();
+        clearBtn.disabled = false;
         return;
       }
 
       if (!isValidHostname(hostname)) {
         showError('Vui lòng mở trang X hoặc Twitter để thu thập ảnh.');
-        setButtonsEnabled(true);
+        isCollecting = false;
+        updateCollectButtonState();
+        clearBtn.disabled = false;
         return;
       }
 
@@ -425,13 +444,17 @@
 
       if (!response) {
         showError('Content script chưa được tải. Vui lòng tải lại trang X.');
-        setButtonsEnabled(true);
+        isCollecting = false;
+        updateCollectButtonState();
+        clearBtn.disabled = false;
         return;
       }
 
       if (!response.success) {
         showError(response.error || 'Thu thập thất bại.');
-        setButtonsEnabled(true);
+        isCollecting = false;
+        updateCollectButtonState();
+        clearBtn.disabled = false;
         return;
       }
 
@@ -441,6 +464,8 @@
         staleWarning.hidden = true;
         emptyState.hidden = false;
         archiveSection.hidden = true;
+        currentResults = null;
+        selectedMediaIds.clear();
       } else {
         await chrome.storage.local.set({
           [config.STORAGE_KEYS.LAST_RESULT]: response
@@ -457,7 +482,10 @@
         showError('Lỗi: ' + (error.message || 'Không xác định'));
       }
     } finally {
-      setButtonsEnabled(true);
+      isCollecting = false;
+      updateCollectButtonState();
+      clearBtn.disabled = false;
+      updateArchiveButtonState();
     }
   }
 
@@ -465,8 +493,8 @@
     console.debug('[X Media Collector] Archive button clicked', {
       hasCurrentResults: !!currentResults,
       selectedCount: selectedMediaIds.size,
-      hasToken: !!connectionState.token,
-      tokenLength: connectionState.token?.length ?? 0,
+      connected: connectionState.connected,
+      tokenValid: connectionState.tokenValid,
       endpointHostname: new URL(importApiUrl).hostname
     });
 
@@ -480,15 +508,17 @@
       return;
     }
 
-    if (!connectionState.token) {
+    if (!connectionState.connected || !connectionState.tokenValid) {
       showError('Phiên kết nối đã hết hạn. Vui lòng kết nối lại.');
-      connectionState.connected = false;
+      connectionState.tokenValid = false;
       updateArchiveButtonState();
       return;
     }
 
     setStatus('Đang lưu...', 'loading');
-    setButtonsEnabled(false);
+    isArchiving = true;
+    updateArchiveButtonState();
+    clearBtn.disabled = true;
 
     const selectedMedia = currentResults.media.filter(function(item) {
       return selectedMediaIds.has(item.mediaUrl);
@@ -537,8 +567,9 @@
 
           await chrome.storage.local.remove(config.STORAGE_KEYS.EXTENSION_TOKEN);
           connectionState.token = null;
+          connectionState.tokenValid = false;
           connectionState.connected = false;
-          updateAuthStatus(false);
+          updateAuthStatus(false, connectionState.email, false);
           updateArchiveButtonState();
           return;
         }
@@ -596,7 +627,9 @@
         showError('Lỗi: ' + (error.message || 'Không xác định'));
       }
     } finally {
-      setButtonsEnabled(true);
+      isArchiving = false;
+      clearBtn.disabled = false;
+      updateArchiveButtonState();
     }
   }
 
@@ -611,7 +644,7 @@
     submitConnectBtn.disabled = true;
 
     try {
-      const response = await fetch(connectApiUrl, {
+      const response = await fetch(tokenApiUrl, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -628,7 +661,14 @@
         return;
       }
 
+      if (!data.data?.token || typeof data.data.token !== 'string' || data.data.token.length < 10) {
+        connectErrorEl.textContent = 'Phản hồi không hợp lệ từ máy chủ.';
+        connectErrorEl.hidden = false;
+        return;
+      }
+
       connectionState.token = data.data.token;
+      connectionState.tokenValid = true;
       await chrome.storage.local.set({
         [config.STORAGE_KEYS.EXTENSION_TOKEN]: connectionState.token
       });
@@ -647,7 +687,7 @@
       }
 
       hideConnectModal();
-      updateAuthStatus(true, connectionState.email);
+      updateAuthStatus(true, connectionState.email, true);
       updateSelectedCount();
       setStatus('Đã kết nối thành công!', 'success');
 
@@ -665,7 +705,8 @@
         collectMedia();
       } catch (error) {
         showError('Lỗi khi xử lý: ' + (error.message || 'Không xác định'));
-        setButtonsEnabled(true);
+        isCollecting = false;
+        updateCollectButtonState();
       }
     });
 
@@ -720,7 +761,9 @@
         importSelectedMedia();
       } catch (error) {
         showError('Lỗi khi xử lý: ' + (error.message || 'Không xác định'));
-        setButtonsEnabled(true);
+        isArchiving = false;
+        clearBtn.disabled = false;
+        updateArchiveButtonState();
       }
     });
 

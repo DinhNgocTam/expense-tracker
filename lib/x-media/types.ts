@@ -1,4 +1,4 @@
-export type MediaType = "image";
+export type MediaType = "image" | "video";
 
 export interface ExtractedMedia {
   index: number;
@@ -7,6 +7,10 @@ export interface ExtractedMedia {
   previewUrl?: string;
   width?: number;
   height?: number;
+  durationSeconds?: number;
+  thumbnailUrl?: string;
+  supported?: boolean;
+  unsupportedReason?: string;
 }
 
 export interface ExtractedXPost {
@@ -36,6 +40,10 @@ export interface XMediaItem {
   format: string | null;
   published_at: string | null;
   created_at: string;
+  duration_seconds: number | null;
+  thumbnail_url: string | null;
+  bitrate: number | null;
+  content_type: string | null;
 }
 
 export interface ExtractionTokenPayload {

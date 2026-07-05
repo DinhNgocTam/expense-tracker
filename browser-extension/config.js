@@ -20,6 +20,6 @@ globalThis.X_MEDIA_CONFIG = Object.freeze({
   STORAGE_KEYS: Object.freeze({
     LAST_RESULT: "xMediaCollector:lastResult",
     EXTENSION_TOKEN: "xMediaCollector:extensionToken",
-    AUTH_EMAIL: "xMediaCollector:authEmail"
-  })
+    AUTH_EMAIL: "xMediaCollector:authEmail",
+  }),
 });

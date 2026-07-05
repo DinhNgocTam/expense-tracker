@@ -92,7 +92,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<ApiRespon
     let skipped = 0;
 
     for (const media of selectedMedia) {
-      const existing = await findExistingMediaItem(user.id, tokenPayload.postId, media.index);
+      const existing = await findExistingMediaItem(user.id, tokenPayload.postId, media.index, "image");
 
       if (existing) {
         skipped++;
